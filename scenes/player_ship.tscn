@@ -2,13 +2,13 @@
 
 [ext_resource type="Script" path="res://scripts/player_ship.gd" id="1"]
 [ext_resource type="Script" path="res://scripts/ship_module.gd" id="2"]
-[ext_resource type="Texture2D" uid="uid://bl3x8qwkx7hxc" path="res://art_placeholders/mod_hull_placeholder.png" id="3"]
-[ext_resource type="Texture2D" uid="uid://c7x8qwkx7hxcd" path="res://art_placeholders/mod_citadel_placeholder.png" id="4"]
-[ext_resource type="Texture2D" uid="uid://d8x8qwkx7hxce" path="res://art_placeholders/mod_engine_placeholder.png" id="5"]
-[ext_resource type="Texture2D" uid="uid://e9x8qwkx7hxcf" path="res://art_placeholders/mod_turret_placeholder.png" id="6"]
+[ext_resource type="Texture2D" uid="uid://hull_starter" path="res://art/placeholders/ship_hull_starter.png" id="3"]
+[ext_resource type="Texture2D" uid="uid://mod_turret" path="res://art/placeholders/mod_turret_placeholder.png" id="4"]
+[ext_resource type="Texture2D" uid="uid://mod_citadel" path="res://art/placeholders/mod_citadel_placeholder.png" id="5"]
+[ext_resource type="Texture2D" uid="uid://mod_engine" path="res://art/placeholders/mod_engine_placeholder.png" id="6"]
 
 [sub_resource type="RectangleShape2D" id="RectangleShape2D_1"]
-size = Vector2(96, 192)
+size = Vector2(80, 220)
 
 [node name="PlayerShip" type="CharacterBody2D"]
 collision_layer = 1
@@ -24,33 +24,34 @@ module_type = 0
 
 [node name="Sprite2D" type="Sprite2D" parent="HullModule"]
 texture = ExtResource("3")
-
-[node name="CitadelModule" type="Node2D" parent="."]
-position = Vector2(0, -20)
-script = ExtResource("2")
-module_type = 1
-
-[node name="Sprite2D" type="Sprite2D" parent="CitadelModule"]
-texture = ExtResource("4")
-
-[node name="EngineModule" type="Node2D" parent="."]
-position = Vector2(0, 70)
-script = ExtResource("2")
-module_type = 2
-
-[node name="Sprite2D" type="Sprite2D" parent="EngineModule"]
-texture = ExtResource("5")
+offset = Vector2(0, 0)
 
 [node name="TurretModule" type="Node2D" parent="."]
-position = Vector2(0, -50)
+position = Vector2(0, -52)
 script = ExtResource("2")
 module_type = 3
 
 [node name="Sprite2D" type="Sprite2D" parent="TurretModule"]
+texture = ExtResource("4")
+
+[node name="CitadelModule" type="Node2D" parent="."]
+position = Vector2(0, -2)
+script = ExtResource("2")
+module_type = 1
+
+[node name="Sprite2D" type="Sprite2D" parent="CitadelModule"]
+texture = ExtResource("5")
+
+[node name="EngineModule" type="Node2D" parent="."]
+position = Vector2(0, 68)
+script = ExtResource("2")
+module_type = 2
+
+[node name="Sprite2D" type="Sprite2D" parent="EngineModule"]
 texture = ExtResource("6")
 
 [node name="WakeTrail" type="Line2D" parent="."]
-position = Vector2(0, 90)
+position = Vector2(0, 110)
 width = 3.0
 default_color = Color(0.7, 0.85, 1, 0.4)
 joint_mode = 2

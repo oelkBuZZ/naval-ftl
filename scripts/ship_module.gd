@@ -17,9 +17,11 @@ var is_offline: bool = false
 @onready var sprite: Sprite2D = $Sprite2D
 @onready var fire_particles: CPUParticles2D = null
 @onready var collision_area: Area2D = null
+@onready var focus_ring: Sprite2D = null
 
 signal module_destroyed(module: ShipModule)
 signal module_clicked(module: ShipModule)
+signal module_damaged(damage: float)
 
 func _ready():
 	max_hp = GameConstants.get_module_max_hp(module_type)
@@ -32,6 +34,10 @@ func _ready():
 	if has_node("FireParticles"):
 		fire_particles = $FireParticles
 		fire_particles.emitting = false
+	
+	if has_node("FocusRing"):
+		focus_ring = $FocusRing
+		focus_ring.visible = false
 
 func _process(delta):
 	if is_on_fire:
@@ -56,7 +62,11 @@ func take_damage(damage: float, can_start_fire: bool = true):
 	if is_offline:
 		return
 	
-	current_hp -= damage
+	var actual_damage = min(damage, current_hp)
+	current_hp -= actual_damage
+	
+	# Emit signal to ship so it can track overall HP
+	module_damaged.emit(actual_damage)
 	
 	# Red-tinted damage flash
 	if sprite:
@@ -90,6 +100,8 @@ func extinguish_fire():
 
 func set_focused(focused: bool):
 	is_focused = focused
+	if focus_ring:
+		focus_ring.visible = focused
 	_update_visual_state()
 
 func get_hp_percent() -> float:

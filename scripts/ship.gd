@@ -9,15 +9,22 @@ const GameConstants = preload("res://scripts/game_constants.gd")
 
 var current_speed: float = 0.0
 var modules: Array[ShipModule] = []
+var hull_module: ShipModule = null
 var turret_module: ShipModule = null
 var turret_cooldown: float = 0.0
 var focused_target: Ship = null
 var focus_fire_module: ShipModule = null
 
+# Ship overall HP
+var max_overall_hp: float = 0.0
+var current_overall_hp: float = 0.0
+
 signal ship_destroyed
+signal overall_hp_changed(current: float, max_hp: float)
 
 func _ready():
 	_setup_modules()
+	_calculate_overall_hp()
 
 func _process(delta):
 	if turret_cooldown > 0:
@@ -34,8 +41,18 @@ func _setup_modules():
 		if child is ShipModule:
 			modules.append(child)
 			child.module_destroyed.connect(_on_module_destroyed)
+			child.module_damaged.connect(_on_module_damaged)
 			if child.module_type == GameConstants.ModuleType.TURRET:
 				turret_module = child
+			elif child.module_type == GameConstants.ModuleType.HULL:
+				hull_module = child
+
+func _calculate_overall_hp():
+	max_overall_hp = 0.0
+	for module in modules:
+		max_overall_hp += module.max_hp
+	current_overall_hp = max_overall_hp
+	overall_hp_changed.emit(current_overall_hp, max_overall_hp)
 
 func _update_turret(delta):
 	if not turret_module or not focused_target:
@@ -81,25 +98,30 @@ func set_focused_target(target: Ship):
 func set_focus_fire_module(module: ShipModule):
 	focus_fire_module = module
 
+func _on_module_damaged(damage: float):
+	# When a module is damaged, also reduce overall ship HP by the same amount
+	current_overall_hp = max(0, current_overall_hp - damage)
+	overall_hp_changed.emit(current_overall_hp, max_overall_hp)
+	
+	# Check if ship should be destroyed (overall HP depleted)
+	if current_overall_hp <= 0:
+		ship_destroyed.emit()
+		queue_free()
+
 func _on_module_destroyed(module: ShipModule):
 	if module == turret_module:
 		turret_module = null
 	
-	# Check if Hull or Citadel is offline → ship is destroyed
-	var hull_module = modules.filter(func(m): return m.module_type == GameConstants.ModuleType.HULL)
-	var citadel_module = modules.filter(func(m): return m.module_type == GameConstants.ModuleType.CITADEL)
+	# Check if all modules are offline → ship is destroyed
+	var all_offline = true
+	for mod in modules:
+		if not mod.is_offline:
+			all_offline = false
+			break
 	
-	var hull_offline = hull_module.size() > 0 and hull_module[0].is_offline
-	var citadel_offline = citadel_module.size() > 0 and citadel_module[0].is_offline
-	
-	if hull_offline or citadel_offline:
+	if all_offline:
 		ship_destroyed.emit()
 		queue_free()
-
-func hit_by_projectile(projectile: Projectile):
-	if modules.size() > 0:
-		var random_module = modules.pick_random()
-		random_module.take_damage(projectile.damage)
 
 func angle_difference(from_angle: float, to_angle: float) -> float:
 	var diff = fmod(to_angle - from_angle, TAU)

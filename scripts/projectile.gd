@@ -11,7 +11,6 @@ var target_module: Node2D = null
 var lifetime: float = 0.0
 
 func _ready():
-	body_entered.connect(_on_body_entered)
 	area_entered.connect(_on_area_entered)
 
 func _process(delta):
@@ -29,11 +28,6 @@ func setup(start_pos: Vector2, direction: Vector2, proj_damage: float, source: N
 	source_ship = source
 	target_module = target
 	rotation = velocity.angle()
-
-func _on_body_entered(body):
-	if body != source_ship and body.has_method("hit_by_projectile"):
-		body.hit_by_projectile(self)
-		queue_free()
 
 func _on_area_entered(area):
 	if area.get_parent() is ShipModule:
