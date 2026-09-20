@@ -25,8 +25,16 @@ func _connect_enemy_modules():
 			module.module_clicked.connect(_on_enemy_module_clicked)
 
 func _on_enemy_module_clicked(module: ShipModule):
+	# Clear previous focus highlight
+	if current_focus_module:
+		current_focus_module.set_focused(false)
+	
 	current_focus_module = module
 	player_ship.set_focus_fire_module(module)
+	
+	# Set new focus highlight
+	module.set_focused(true)
+	
 	_update_focus_label()
 
 func _process(_delta):
@@ -59,9 +67,12 @@ func _update_enemy_hp_display():
 		var module_name = _get_module_name(module.module_type)
 		var hp_percent = module.get_hp_percent() * 100
 		var fire_indicator = " [FIRE]" if module.is_on_fire else ""
-		hp_label.text = "%s: %.0f%%%s" % [module_name, hp_percent, fire_indicator]
+		var offline_indicator = " [OFFLINE]" if module.is_offline else ""
+		hp_label.text = "%s: %.0f%%%s%s" % [module_name, hp_percent, fire_indicator, offline_indicator]
 		
-		if hp_percent < 25:
+		if module.is_offline:
+			hp_label.modulate = Color.DIM_GRAY
+		elif hp_percent < 25:
 			hp_label.modulate = Color.RED
 		elif hp_percent < 50:
 			hp_label.modulate = Color.ORANGE
@@ -81,6 +92,8 @@ func _get_module_name(module_type) -> String:
 func _on_enemy_destroyed():
 	target_label.text = "ENEMY DESTROYED - Victory!"
 	focus_label.text = ""
+	if current_focus_module:
+		current_focus_module.set_focused(false)
 
 func _on_player_destroyed():
 	target_label.text = "PLAYER DESTROYED - Defeat!"

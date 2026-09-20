@@ -2,11 +2,13 @@ extends Area2D
 class_name Projectile
 
 const GameConstants = preload("res://scripts/game_constants.gd")
+const PROJECTILE_LIFETIME = 4.0  # seconds before auto-despawn
 
 var velocity: Vector2
 var damage: float = GameConstants.PROJECTILE_DAMAGE
 var source_ship: Node2D = null
 var target_module: Node2D = null
+var lifetime: float = 0.0
 
 func _ready():
 	body_entered.connect(_on_body_entered)
@@ -14,8 +16,10 @@ func _ready():
 
 func _process(delta):
 	position += velocity * delta
+	lifetime += delta
 	
-	if not get_viewport_rect().has_point(position):
+	# Despawn after lifetime expires
+	if lifetime >= PROJECTILE_LIFETIME:
 		queue_free()
 
 func setup(start_pos: Vector2, direction: Vector2, proj_damage: float, source: Node2D, target: Node2D = null):
