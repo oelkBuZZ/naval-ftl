@@ -1,8 +1,6 @@
 extends Ship
 class_name EnemyShip
 
-const GameConstants = preload("res://scripts/game_constants.gd")
-
 var player_ship: Ship = null
 
 func _ready():
