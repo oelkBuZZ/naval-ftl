@@ -1,8 +1,6 @@
 extends Ship
 class_name PlayerShip
 
-const GameConstants = preload("res://scripts/game_constants.gd")
-
 var target_speed: float = 0.0
 var wake_trail: Line2D = null
 var wake_points: Array = []
