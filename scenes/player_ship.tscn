@@ -49,4 +49,12 @@ module_type = 3
 [node name="Sprite2D" type="Sprite2D" parent="TurretModule"]
 texture = ExtResource("6")
 
+[node name="WakeTrail" type="Line2D" parent="."]
+position = Vector2(0, 90)
+width = 3.0
+default_color = Color(0.7, 0.85, 1, 0.4)
+joint_mode = 2
+begin_cap_mode = 2
+end_cap_mode = 2
+
 [node name="Camera2D" type="Camera2D" parent="."]
