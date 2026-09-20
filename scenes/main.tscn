@@ -52,15 +52,3 @@ offset_right = 600.0
 offset_bottom = 700.0
 theme_override_font_sizes/font_size = 14
 text = "Controls: A/D = Rotate | W/S = Throttle | Click enemy modules to focus fire"
-
-[node name="EnemyHPInfo" type="VBoxContainer" parent="UI"]
-layout_mode = 0
-offset_left = 900.0
-offset_top = 20.0
-offset_right = 1260.0
-offset_bottom = 200.0
-
-[node name="Title" type="Label" parent="UI/EnemyHPInfo"]
-layout_mode = 2
-theme_override_font_sizes/font_size = 18
-text = "Enemy Status:"

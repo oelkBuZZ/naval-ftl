@@ -15,15 +15,19 @@ var turret_cooldown: float = 0.0
 var focused_target: Ship = null
 var focus_fire_module: ShipModule = null
 
-# Ship overall HP
+# Ship overall HP tracking (for destruction logic)
 var max_overall_hp: float = 0.0
 var current_overall_hp: float = 0.0
+
+# World-space HP bar
+var hp_bar: ProgressBar = null
 
 signal ship_destroyed
 signal overall_hp_changed(current: float, max_hp: float)
 
 func _ready():
 	_setup_modules()
+	_setup_hp_bar()
 	_calculate_overall_hp()
 
 func _process(delta):
@@ -42,6 +46,7 @@ func _setup_modules():
 			modules.append(child)
 			child.module_destroyed.connect(_on_module_destroyed)
 			child.module_damaged.connect(_on_module_damaged)
+			child.module_hp_changed.connect(_on_module_hp_changed)
 			if child.module_type == GameConstants.ModuleType.TURRET:
 				turret_module = child
 			elif child.module_type == GameConstants.ModuleType.HULL:
@@ -53,6 +58,64 @@ func _calculate_overall_hp():
 		max_overall_hp += module.max_hp
 	current_overall_hp = max_overall_hp
 	overall_hp_changed.emit(current_overall_hp, max_overall_hp)
+
+func _setup_hp_bar():
+	# Create world-space HP bar above ship
+	var hp_container = Control.new()
+	hp_container.name = "HPBarContainer"
+	hp_container.position = Vector2(-60, -120)  # Position above ship
+	hp_container.z_index = 100
+	add_child(hp_container)
+	
+	hp_bar = ProgressBar.new()
+	hp_bar.name = "HPBar"
+	hp_bar.custom_minimum_size = Vector2(120, 8)
+	hp_bar.show_percentage = false
+	
+	# Style the HP bar
+	var style_bg = StyleBoxFlat.new()
+	style_bg.bg_color = Color(0.2, 0.2, 0.2, 0.8)
+	style_bg.border_width_left = 1
+	style_bg.border_width_right = 1
+	style_bg.border_width_top = 1
+	style_bg.border_width_bottom = 1
+	style_bg.border_color = Color(0.4, 0.4, 0.4, 1.0)
+	hp_bar.add_theme_stylebox_override("background", style_bg)
+	
+	var style_fill = StyleBoxFlat.new()
+	style_fill.bg_color = Color(0.2, 0.8, 0.3, 0.9)
+	hp_bar.add_theme_stylebox_override("fill", style_fill)
+	
+	hp_container.add_child(hp_bar)
+
+func _update_hp_bar():
+	if not hp_bar:
+		return
+	
+	hp_bar.max_value = max_overall_hp
+	hp_bar.value = current_overall_hp
+	
+	# Update color based on HP percentage
+	var hp_percent = current_overall_hp / max_overall_hp if max_overall_hp > 0 else 0.0
+	var style_fill = StyleBoxFlat.new()
+	if hp_percent > 0.6:
+		style_fill.bg_color = Color(0.2, 0.8, 0.3, 0.9)  # Green
+	elif hp_percent > 0.3:
+		style_fill.bg_color = Color(0.9, 0.7, 0.2, 0.9)  # Orange
+	else:
+		style_fill.bg_color = Color(0.9, 0.2, 0.2, 0.9)  # Red
+	hp_bar.add_theme_stylebox_override("fill", style_fill)
+
+func _on_module_hp_changed():
+	# Recalculate overall HP from all modules (for HP bar display)
+	var total_current = 0.0
+	var total_max = 0.0
+	for module in modules:
+		total_current += module.current_hp
+		total_max += module.max_hp
+	
+	# Update but don't override the damage-based tracking
+	_update_hp_bar()
 
 func _update_turret(delta):
 	if not turret_module or not focused_target:
@@ -102,6 +165,7 @@ func _on_module_damaged(damage: float):
 	# When a module is damaged, also reduce overall ship HP by the same amount
 	current_overall_hp = max(0, current_overall_hp - damage)
 	overall_hp_changed.emit(current_overall_hp, max_overall_hp)
+	_update_hp_bar()
 	
 	# Check if ship should be destroyed (overall HP depleted)
 	if current_overall_hp <= 0:
