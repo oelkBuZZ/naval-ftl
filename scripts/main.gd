@@ -2,9 +2,10 @@ extends Node2D
 
 @onready var player_ship: PlayerShip = $PlayerShip
 @onready var ui: Control = $UI
-@antml:parameter name="target_label: Label = $UI/TargetInfo
+@onready var target_label: Label = $UI/TargetInfo
 @onready var focus_label: Label = $UI/FocusInfo
 @onready var controls_label: Label = $UI/ControlsInfo
+@onready var target_panel: TargetPanel = $UI/TargetPanel
 
 # Wave system
 const FIRST_WAVE_DELAY = 5.0  # First enemy at t=5s
@@ -28,6 +29,10 @@ func _ready():
 	if has_node("EnemyShip"):
 		var baked_enemy = get_node("EnemyShip")
 		baked_enemy.queue_free()
+	
+	# Setup target panel with camera and reference to main for focus checking
+	var camera = player_ship.get_node("Camera2D")
+	target_panel.setup(null, camera, self)
 	
 	player_ship.ship_destroyed.connect(_on_player_destroyed)
 	
@@ -82,6 +87,9 @@ func _on_enemy_module_clicked(module: ShipModule, enemy: EnemyShip):
 	# Set new focus highlight
 	module.set_focused(true)
 	
+	# Update target panel to show this enemy
+	target_panel.update_enemy(enemy)
+	
 	_update_focus_label()
 
 func _process(delta):
@@ -124,6 +132,7 @@ func _spawn_enemy():
 	if active_enemies.size() == 1:
 		player_ship.set_focused_target(enemy)
 		current_focus_enemy = enemy
+		target_panel.update_enemy(enemy)
 
 func _update_ui():
 	var alive_count = active_enemies.size()
@@ -163,8 +172,10 @@ func _on_enemy_destroyed(enemy: EnemyShip):
 			var next_enemy = active_enemies[0]
 			player_ship.set_focused_target(next_enemy)
 			current_focus_enemy = next_enemy
+			target_panel.update_enemy(next_enemy)
 		else:
 			player_ship.set_focused_target(null)
+			target_panel.update_enemy(null)
 
 func _on_player_destroyed():
 	target_label.text = "PLAYER DESTROYED - Defeat!"
