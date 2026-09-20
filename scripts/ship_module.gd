@@ -30,6 +30,9 @@ func _ready():
 	if is_clickable and has_node("ClickArea"):
 		collision_area = $ClickArea
 		collision_area.input_event.connect(_on_input_event)
+	elif has_node("HitArea"):
+		# For non-clickable modules (e.g., player modules), just need hit detection
+		collision_area = $HitArea
 	
 	if has_node("FireParticles"):
 		fire_particles = $FireParticles
