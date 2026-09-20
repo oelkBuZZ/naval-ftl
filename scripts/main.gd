@@ -2,10 +2,9 @@ extends Node2D
 
 @onready var player_ship: PlayerShip = $PlayerShip
 @onready var ui: Control = $UI
-@onready var target_label: Label = $UI/TargetInfo
+@antml:parameter name="target_label: Label = $UI/TargetInfo
 @onready var focus_label: Label = $UI/FocusInfo
 @onready var controls_label: Label = $UI/ControlsInfo
-@onready var enemy_hp_container: VBoxContainer = $UI/EnemyHPInfo
 
 # Wave system
 const FIRST_WAVE_DELAY = 5.0  # First enemy at t=5s
@@ -20,9 +19,6 @@ var first_wave_spawned: bool = false
 # UI tracking
 var current_focus_module: ShipModule = null
 var current_focus_enemy: EnemyShip = null
-var player_ship_hp_bar: ProgressBar = null
-var enemy_ship_hp_bar: ProgressBar = null
-var focus_module_label: Label = null
 
 func _ready():
 	# Load enemy scene for wave spawning
@@ -33,67 +29,43 @@ func _ready():
 		var baked_enemy = get_node("EnemyShip")
 		baked_enemy.queue_free()
 	
-	_setup_ship_hp_bars()
-	_setup_focus_label()
-	
 	player_ship.ship_destroyed.connect(_on_player_destroyed)
-	player_ship.overall_hp_changed.connect(_on_player_hp_changed)
 	
 	# Start wave timer
 	wave_timer = FIRST_WAVE_DELAY
 
-func _setup_ship_hp_bars():
-	# Player HP bar
-	player_ship_hp_bar = ProgressBar.new()
-	player_ship_hp_bar.position = Vector2(20, 100)
-	player_ship_hp_bar.size = Vector2(300, 30)
-	player_ship_hp_bar.show_percentage = false
-	ui.add_child(player_ship_hp_bar)
+func _unhandled_input(event):
+	if event is InputEventMouseButton and event.pressed and event.button_index == MOUSE_BUTTON_LEFT:
+		_handle_click(event.position)
+
+func _handle_click(screen_pos: Vector2):
+	# Convert screen position to world position
+	var world_pos = get_viewport().get_canvas_transform().affine_inverse() * screen_pos
 	
-	var player_hp_label = Label.new()
-	player_hp_label.position = Vector2(20, 80)
-	player_hp_label.text = "Player Ship HP:"
-	player_hp_label.add_theme_font_size_override("font_size", 16)
-	ui.add_child(player_hp_label)
+	# Check which enemy module was clicked across all active enemies
+	var clicked_module: ShipModule = null
+	var clicked_enemy: EnemyShip = null
+	var min_distance = 999999.0
 	
-	# Enemy HP bar
-	enemy_ship_hp_bar = ProgressBar.new()
-	enemy_ship_hp_bar.position = Vector2(900, 200)
-	enemy_ship_hp_bar.size = Vector2(300, 30)
-	enemy_ship_hp_bar.show_percentage = false
-	ui.add_child(enemy_ship_hp_bar)
+	for enemy in active_enemies:
+		if not is_instance_valid(enemy):
+			continue
+		
+		for module in enemy.modules:
+			if not module.is_clickable:
+				continue
+			
+			var module_pos = module.global_position
+			var distance = world_pos.distance_to(module_pos)
+			
+			# Check if click is within module bounds (rough approximation)
+			if distance < 50.0 and distance < min_distance:
+				clicked_module = module
+				clicked_enemy = enemy
+				min_distance = distance
 	
-	var enemy_hp_label = Label.new()
-	enemy_hp_label.position = Vector2(900, 180)
-	enemy_hp_label.text = "Enemy Ship HP:"
-	enemy_hp_label.add_theme_font_size_override("font_size", 16)
-	ui.add_child(enemy_hp_label)
-
-func _setup_focus_label():
-	focus_module_label = Label.new()
-	focus_module_label.position = Vector2(640, 50)
-	focus_module_label.size = Vector2(400, 40)
-	focus_module_label.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
-	focus_module_label.add_theme_font_size_override("font_size", 24)
-	focus_module_label.add_theme_color_override("font_color", Color(1.0, 1.0, 0.3))
-	focus_module_label.text = ""
-	ui.add_child(focus_module_label)
-
-func _on_player_hp_changed(current: float, max_hp: float):
-	if player_ship_hp_bar:
-		player_ship_hp_bar.max_value = max_hp
-		player_ship_hp_bar.value = current
-
-func _on_enemy_hp_changed(current: float, max_hp: float):
-	# Only update HP bar for currently focused enemy
-	if enemy_ship_hp_bar and current_focus_enemy:
-		enemy_ship_hp_bar.max_value = max_hp
-		enemy_ship_hp_bar.value = current
-
-func _connect_enemy_modules(enemy: EnemyShip):
-	for module in enemy.modules:
-		if module.is_clickable:
-			module.module_clicked.connect(_on_enemy_module_clicked.bind(enemy))
+	if clicked_module and clicked_enemy:
+		_on_enemy_module_clicked(clicked_module, clicked_enemy)
 
 func _on_enemy_module_clicked(module: ShipModule, enemy: EnemyShip):
 	# Clear previous focus highlight
@@ -111,11 +83,6 @@ func _on_enemy_module_clicked(module: ShipModule, enemy: EnemyShip):
 	module.set_focused(true)
 	
 	_update_focus_label()
-	
-	# Update the center focus label
-	if focus_module_label:
-		var module_name = _get_module_name(module.module_type)
-		focus_module_label.text = "FOCUSED: %s" % module_name
 
 func _process(delta):
 	_update_wave_spawning(delta)
@@ -149,10 +116,6 @@ func _spawn_enemy():
 	# Setup enemy
 	enemy.set_player_target(player_ship)
 	enemy.ship_destroyed.connect(_on_enemy_destroyed.bind(enemy))
-	enemy.overall_hp_changed.connect(_on_enemy_hp_changed)
-	
-	# Connect modules for clicking
-	_connect_enemy_modules(enemy)
 	
 	# Track active enemy
 	active_enemies.append(enemy)
@@ -168,42 +131,13 @@ func _update_ui():
 		target_label.text = "Enemies: %d" % alive_count
 	else:
 		target_label.text = "No Enemies"
-	
-	_update_enemy_hp_display()
 
 func _update_focus_label():
 	if current_focus_module:
 		var module_name = _get_module_name(current_focus_module.module_type)
-		focus_label.text = "Focus Fire: %s (%.0f%% HP)" % [module_name, current_focus_module.get_hp_percent() * 100]
+		focus_label.text = "FOCUSED: %s (%.0f%% HP)" % [module_name, current_focus_module.get_hp_percent() * 100]
 	else:
 		focus_label.text = "Focus Fire: None (click enemy module)"
-
-func _update_enemy_hp_display():
-	for child in enemy_hp_container.get_children():
-		child.queue_free()
-	
-	# Show HP for currently focused enemy
-	if not current_focus_enemy or not is_instance_valid(current_focus_enemy):
-		return
-	
-	for module in current_focus_enemy.modules:
-		var hp_label = Label.new()
-		var module_name = _get_module_name(module.module_type)
-		var hp_percent = module.get_hp_percent() * 100
-		var fire_indicator = " [FIRE]" if module.is_on_fire else ""
-		var offline_indicator = " [OFFLINE]" if module.is_offline else ""
-		hp_label.text = "%s: %.0f%%%s%s" % [module_name, hp_percent, fire_indicator, offline_indicator]
-		
-		if module.is_offline:
-			hp_label.modulate = Color.DIM_GRAY
-		elif hp_percent < 25:
-			hp_label.modulate = Color.RED
-		elif hp_percent < 50:
-			hp_label.modulate = Color.ORANGE
-		elif module.is_on_fire:
-			hp_label.modulate = Color.ORANGE_RED
-		
-		enemy_hp_container.add_child(hp_label)
 
 func _get_module_name(module_type) -> String:
 	match module_type:
@@ -231,9 +165,6 @@ func _on_enemy_destroyed(enemy: EnemyShip):
 			current_focus_enemy = next_enemy
 		else:
 			player_ship.set_focused_target(null)
-		
-		if focus_module_label:
-			focus_module_label.text = ""
 
 func _on_player_destroyed():
 	target_label.text = "PLAYER DESTROYED - Defeat!"

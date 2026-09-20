@@ -17,11 +17,13 @@ var is_offline: bool = false
 @onready var sprite: Sprite2D = $Sprite2D
 @onready var fire_particles: CPUParticles2D = null
 @onready var collision_area: Area2D = null
-@onready var focus_ring: Sprite2D = null
+@onready var outline: Line2D = null
+@onready var focus_ring: Line2D = null
 
 signal module_destroyed(module: ShipModule)
 signal module_clicked(module: ShipModule)
 signal module_damaged(damage: float)
+signal module_hp_changed
 
 func _ready():
 	max_hp = GameConstants.get_module_max_hp(module_type)
@@ -29,7 +31,6 @@ func _ready():
 	
 	if is_clickable and has_node("ClickArea"):
 		collision_area = $ClickArea
-		collision_area.input_event.connect(_on_input_event)
 	elif has_node("HitArea"):
 		# For non-clickable modules (e.g., player modules), just need hit detection
 		collision_area = $HitArea
@@ -38,9 +39,12 @@ func _ready():
 		fire_particles = $FireParticles
 		fire_particles.emitting = false
 	
-	if has_node("FocusRing"):
-		focus_ring = $FocusRing
-		focus_ring.visible = false
+	# Create faint outline for clickable modules
+	if is_clickable:
+		_create_outline()
+	
+	# Create focus ring (hidden by default)
+	_create_focus_ring()
 
 func _process(delta):
 	if is_on_fire:
@@ -59,6 +63,7 @@ func _process(delta):
 		if repair_timer >= 1.0:
 			repair_timer = 0.0
 			current_hp = min(current_hp + GameConstants.REPAIR_RATE, max_hp)
+			module_hp_changed.emit()
 			_update_visual_state()
 
 func take_damage(damage: float, can_start_fire: bool = true):
@@ -68,8 +73,9 @@ func take_damage(damage: float, can_start_fire: bool = true):
 	var actual_damage = min(damage, current_hp)
 	current_hp -= actual_damage
 	
-	# Emit signal to ship so it can track overall HP
+	# Emit signals to ship for HP tracking and bar updates
 	module_damaged.emit(actual_damage)
+	module_hp_changed.emit()
 	
 	# Red-tinted damage flash
 	if sprite:
@@ -151,6 +157,57 @@ func _enter_offline_state():
 	
 	_update_visual_state()
 
-func _on_input_event(_viewport, event, _shape_idx):
-	if event is InputEventMouseButton and event.pressed and event.button_index == MOUSE_BUTTON_LEFT:
-		module_clicked.emit(self)
+func _create_outline():
+	outline = Line2D.new()
+	outline.name = "Outline"
+	outline.width = 1.5
+	outline.default_color = Color(0.6, 0.8, 1.0, 0.3)  # Faint blue outline
+	outline.closed = true
+	outline.z_index = -1
+	
+	# Create rectangle outline based on module size
+	var size = Vector2(48, 48)  # Base size
+	match module_type:
+		GameConstants.ModuleType.HULL:
+			size = Vector2(48, 96)
+		GameConstants.ModuleType.CITADEL:
+			size = Vector2(32, 32)
+		GameConstants.ModuleType.ENGINE:
+			size = Vector2(48, 48)
+		GameConstants.ModuleType.TURRET:
+			size = Vector2(36, 44)
+	
+	outline.add_point(Vector2(-size.x/2, -size.y/2))
+	outline.add_point(Vector2(size.x/2, -size.y/2))
+	outline.add_point(Vector2(size.x/2, size.y/2))
+	outline.add_point(Vector2(-size.x/2, size.y/2))
+	
+	add_child(outline)
+
+func _create_focus_ring():
+	focus_ring = Line2D.new()
+	focus_ring.name = "FocusRing"
+	focus_ring.width = 4.0
+	focus_ring.default_color = Color(1.0, 0.9, 0.2, 0.9)  # Bright yellow
+	focus_ring.closed = true
+	focus_ring.z_index = 10
+	focus_ring.visible = false
+	
+	# Create larger rectangle for focus ring
+	var size = Vector2(56, 56)  # Base size + padding
+	match module_type:
+		GameConstants.ModuleType.HULL:
+			size = Vector2(56, 104)
+		GameConstants.ModuleType.CITADEL:
+			size = Vector2(40, 40)
+		GameConstants.ModuleType.ENGINE:
+			size = Vector2(56, 56)
+		GameConstants.ModuleType.TURRET:
+			size = Vector2(44, 52)
+	
+	focus_ring.add_point(Vector2(-size.x/2, -size.y/2))
+	focus_ring.add_point(Vector2(size.x/2, -size.y/2))
+	focus_ring.add_point(Vector2(size.x/2, size.y/2))
+	focus_ring.add_point(Vector2(-size.x/2, size.y/2))
+	
+	add_child(focus_ring)
