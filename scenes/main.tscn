@@ -1,8 +1,10 @@
-[gd_scene load_steps=4 format=3 uid="uid://main_scene001"]
+[gd_scene load_steps=5 format=3 uid="uid://main_scene001"]
 
 [ext_resource type="PackedScene" uid="uid://player_ship001" path="res://scenes/player_ship.tscn" id="1"]
 [ext_resource type="PackedScene" uid="uid://enemy_ship001" path="res://scenes/enemy_ship.tscn" id="2"]
 [ext_resource type="Script" path="res://scripts/main.gd" id="3"]
+[ext_resource type="PackedScene" uid="uid://pause_menu001" path="res://scenes/pause_menu.tscn" id="4"]
+[ext_resource type="PackedScene" uid="uid://target_panel001" path="res://scenes/target_panel.tscn" id="5"]
 
 [node name="Main" type="Node2D"]
 script = ExtResource("3")
@@ -52,3 +54,8 @@ offset_right = 600.0
 offset_bottom = 700.0
 theme_override_font_sizes/font_size = 14
 text = "Controls: A/D = Rotate | W/S = Throttle | Click enemy modules to focus fire"
+
+[node name="TargetPanel" parent="UI" instance=ExtResource("5")]
+layout_mode = 1
+
+[node name="PauseMenu" parent="." instance=ExtResource("4")]

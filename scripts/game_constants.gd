@@ -4,14 +4,14 @@ extends Node
 # All gameplay values in one place for easy balancing
 
 # SHIP MOVEMENT
-const PLAYER_ROTATION_SPEED = 90.0  # degrees per second
-const PLAYER_MAX_SPEED = 200.0  # pixels per second
-const PLAYER_ACCELERATION = 100.0  # pixels per second^2
-const PLAYER_DECELERATION = 150.0  # pixels per second^2
+const PLAYER_ROTATION_SPEED = 45.0  # degrees per second (was 90.0)
+const PLAYER_MAX_SPEED = 100.0  # pixels per second (was 200.0)
+const PLAYER_ACCELERATION = 50.0  # pixels per second^2 (was 100.0)
+const PLAYER_DECELERATION = 75.0  # pixels per second^2 (was 150.0)
 
-const ENEMY_ROTATION_SPEED = 60.0
-const ENEMY_MAX_SPEED = 120.0
-const ENEMY_ACCELERATION = 80.0
+const ENEMY_ROTATION_SPEED = 30.0  # (was 60.0)
+const ENEMY_MAX_SPEED = 60.0  # (was 120.0)
+const ENEMY_ACCELERATION = 40.0  # (was 80.0)
 
 # MODULE HEALTH
 const MODULE_HP_HULL = 150.0
@@ -21,10 +21,13 @@ const MODULE_HP_TURRET = 60.0
 
 # COMBAT
 const TURRET_FIRE_RATE = 2.0  # seconds between shots
-const TURRET_RANGE = 600.0  # pixels
+const TURRET_RANGE = 1200.0  # pixels (was 600.0)
 const TURRET_ROTATION_SPEED = 45.0  # degrees per second
 const PROJECTILE_SPEED = 400.0  # pixels per second
 const PROJECTILE_DAMAGE = 25.0
+
+# SHIP SCALE
+const SHIP_SCALE = 1.7  # Scale multiplier for ships (hull + modules)
 
 # FIRE & REPAIR
 const FIRE_START_CHANCE = 0.15  # 15% chance per hit

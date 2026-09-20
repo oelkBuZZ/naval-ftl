@@ -31,6 +31,9 @@ func _physics_process(delta):
 	_update_wake_trail()
 
 func _handle_input(delta):
+	if get_tree().paused:
+		return
+	
 	var rotation_input = 0.0
 	if Input.is_action_pressed("rotate_left"):
 		rotation_input -= 1.0
