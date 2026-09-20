@@ -1,32 +1,46 @@
 extends Node2D
 
 @onready var player_ship: PlayerShip = $PlayerShip
-@onready var enemy_ship: EnemyShip = $EnemyShip
 @onready var ui: Control = $UI
 @onready var target_label: Label = $UI/TargetInfo
 @onready var focus_label: Label = $UI/FocusInfo
 @onready var controls_label: Label = $UI/ControlsInfo
 @onready var enemy_hp_container: VBoxContainer = $UI/EnemyHPInfo
 
+# Wave system
+const FIRST_WAVE_DELAY = 5.0  # First enemy at t=5s
+const WAVE_INTERVAL = 18.0    # Every 18s after
+const MAX_ENEMIES = 3         # Cap at 3 alive
+
+var enemy_scene: PackedScene
+var active_enemies: Array[EnemyShip] = []
+var wave_timer: float = 0.0
+var first_wave_spawned: bool = false
+
+# UI tracking
 var current_focus_module: ShipModule = null
+var current_focus_enemy: EnemyShip = null
 var player_ship_hp_bar: ProgressBar = null
 var enemy_ship_hp_bar: ProgressBar = null
 var focus_module_label: Label = null
 
 func _ready():
+	# Load enemy scene for wave spawning
+	enemy_scene = preload("res://scenes/enemy_ship.tscn")
+	
+	# Remove any baked enemy ship from the scene
+	if has_node("EnemyShip"):
+		var baked_enemy = get_node("EnemyShip")
+		baked_enemy.queue_free()
+	
 	_setup_ship_hp_bars()
 	_setup_focus_label()
 	
-	player_ship.set_focused_target(enemy_ship)
-	enemy_ship.set_player_target(player_ship)
-	
-	_connect_enemy_modules()
-	
-	enemy_ship.ship_destroyed.connect(_on_enemy_destroyed)
 	player_ship.ship_destroyed.connect(_on_player_destroyed)
-	
 	player_ship.overall_hp_changed.connect(_on_player_hp_changed)
-	enemy_ship.overall_hp_changed.connect(_on_enemy_hp_changed)
+	
+	# Start wave timer
+	wave_timer = FIRST_WAVE_DELAY
 
 func _setup_ship_hp_bars():
 	# Player HP bar
@@ -71,21 +85,26 @@ func _on_player_hp_changed(current: float, max_hp: float):
 		player_ship_hp_bar.value = current
 
 func _on_enemy_hp_changed(current: float, max_hp: float):
-	if enemy_ship_hp_bar:
+	# Only update HP bar for currently focused enemy
+	if enemy_ship_hp_bar and current_focus_enemy:
 		enemy_ship_hp_bar.max_value = max_hp
 		enemy_ship_hp_bar.value = current
 
-func _connect_enemy_modules():
-	for module in enemy_ship.modules:
+func _connect_enemy_modules(enemy: EnemyShip):
+	for module in enemy.modules:
 		if module.is_clickable:
-			module.module_clicked.connect(_on_enemy_module_clicked)
+			module.module_clicked.connect(_on_enemy_module_clicked.bind(enemy))
 
-func _on_enemy_module_clicked(module: ShipModule):
+func _on_enemy_module_clicked(module: ShipModule, enemy: EnemyShip):
 	# Clear previous focus highlight
 	if current_focus_module:
 		current_focus_module.set_focused(false)
 	
 	current_focus_module = module
+	current_focus_enemy = enemy
+	
+	# Set target to this enemy
+	player_ship.set_focused_target(enemy)
 	player_ship.set_focus_fire_module(module)
 	
 	# Set new focus highlight
@@ -98,14 +117,57 @@ func _on_enemy_module_clicked(module: ShipModule):
 		var module_name = _get_module_name(module.module_type)
 		focus_module_label.text = "FOCUSED: %s" % module_name
 
-func _process(_delta):
+func _process(delta):
+	_update_wave_spawning(delta)
 	_update_ui()
 
+func _update_wave_spawning(delta):
+	wave_timer -= delta
+	
+	if wave_timer <= 0:
+		# Try to spawn if under cap
+		if active_enemies.size() < MAX_ENEMIES:
+			_spawn_enemy()
+		
+		# Reset timer for next wave (18s interval after first wave)
+		if not first_wave_spawned:
+			first_wave_spawned = true
+			wave_timer = WAVE_INTERVAL
+		else:
+			wave_timer = WAVE_INTERVAL
+
+func _spawn_enemy():
+	var enemy = enemy_scene.instantiate()
+	add_child(enemy)
+	
+	# Position enemy at distance from player
+	var spawn_angle = randf() * TAU
+	var spawn_distance = 600.0 + randf() * 200.0
+	enemy.position = player_ship.position + Vector2(cos(spawn_angle), sin(spawn_angle)) * spawn_distance
+	enemy.rotation = randf() * TAU
+	
+	# Setup enemy
+	enemy.set_player_target(player_ship)
+	enemy.ship_destroyed.connect(_on_enemy_destroyed.bind(enemy))
+	enemy.overall_hp_changed.connect(_on_enemy_hp_changed)
+	
+	# Connect modules for clicking
+	_connect_enemy_modules(enemy)
+	
+	# Track active enemy
+	active_enemies.append(enemy)
+	
+	# Auto-target first enemy if player has no target
+	if active_enemies.size() == 1:
+		player_ship.set_focused_target(enemy)
+		current_focus_enemy = enemy
+
 func _update_ui():
-	if enemy_ship:
-		target_label.text = "Target: Enemy Ship"
+	var alive_count = active_enemies.size()
+	if alive_count > 0:
+		target_label.text = "Enemies: %d" % alive_count
 	else:
-		target_label.text = "Target: None"
+		target_label.text = "No Enemies"
 	
 	_update_enemy_hp_display()
 
@@ -120,10 +182,11 @@ func _update_enemy_hp_display():
 	for child in enemy_hp_container.get_children():
 		child.queue_free()
 	
-	if not enemy_ship:
+	# Show HP for currently focused enemy
+	if not current_focus_enemy or not is_instance_valid(current_focus_enemy):
 		return
 	
-	for module in enemy_ship.modules:
+	for module in current_focus_enemy.modules:
 		var hp_label = Label.new()
 		var module_name = _get_module_name(module.module_type)
 		var hp_percent = module.get_hp_percent() * 100
@@ -150,14 +213,27 @@ func _get_module_name(module_type) -> String:
 		3: return "Turret"
 		_: return "Unknown"
 
-func _on_enemy_destroyed():
-	target_label.text = "ENEMY DESTROYED - Victory!"
-	focus_label.text = ""
-	if focus_module_label:
-		focus_module_label.text = "VICTORY!"
-		focus_module_label.add_theme_color_override("font_color", Color(0.3, 1.0, 0.3))
-	if current_focus_module:
-		current_focus_module.set_focused(false)
+func _on_enemy_destroyed(enemy: EnemyShip):
+	# Remove from active enemies
+	active_enemies.erase(enemy)
+	
+	# Clear focus if this was the focused enemy
+	if current_focus_enemy == enemy:
+		if current_focus_module:
+			current_focus_module.set_focused(false)
+		current_focus_module = null
+		current_focus_enemy = null
+		
+		# Auto-target next available enemy
+		if active_enemies.size() > 0:
+			var next_enemy = active_enemies[0]
+			player_ship.set_focused_target(next_enemy)
+			current_focus_enemy = next_enemy
+		else:
+			player_ship.set_focused_target(null)
+		
+		if focus_module_label:
+			focus_module_label.text = ""
 
 func _on_player_destroyed():
 	target_label.text = "PLAYER DESTROYED - Defeat!"
