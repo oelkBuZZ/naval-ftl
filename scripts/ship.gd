@@ -56,7 +56,7 @@ func _update_turret(delta):
 		turret_module.rotation += rotation_dir * deg_to_rad(GameConstants.TURRET_ROTATION_SPEED) * delta
 	
 	if turret_cooldown <= 0 and to_target.length() <= GameConstants.TURRET_RANGE:
-		if abs(angle_diff) < deg_to_rad(15.0):
+		if abs(angle_diff) < deg_to_rad(25.0):
 			_fire_turret()
 
 func _fire_turret():
@@ -85,8 +85,14 @@ func _on_module_destroyed(module: ShipModule):
 	if module == turret_module:
 		turret_module = null
 	
-	var active_modules = modules.filter(func(m): return m.current_hp > 0)
-	if active_modules.size() == 0:
+	# Check if Hull or Citadel is offline → ship is destroyed
+	var hull_module = modules.filter(func(m): return m.module_type == GameConstants.ModuleType.HULL)
+	var citadel_module = modules.filter(func(m): return m.module_type == GameConstants.ModuleType.CITADEL)
+	
+	var hull_offline = hull_module.size() > 0 and hull_module[0].is_offline
+	var citadel_offline = citadel_module.size() > 0 and citadel_module[0].is_offline
+	
+	if hull_offline or citadel_offline:
 		ship_destroyed.emit()
 		queue_free()
 
