@@ -30,15 +30,9 @@ func _ready():
 		var baked_enemy = get_node("EnemyShip")
 		baked_enemy.queue_free()
 	
-<<<<<<< HEAD
 	# Setup target panel with camera and reference to main for focus checking
 	var camera = player_ship.get_node("Camera2D")
 	target_panel.setup(null, camera, self)
-=======
-	# Setup target panel with enemy, camera, and reference to main for focus checking
-	var camera = player_ship.get_node("Camera2D")
-	target_panel.setup(enemy_ship, camera, self)
->>>>>>> 8ac1bcb (Apply exact systems-locked feel numbers)
 	
 	player_ship.ship_destroyed.connect(_on_player_destroyed)
 	
