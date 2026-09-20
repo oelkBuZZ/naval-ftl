@@ -46,18 +46,17 @@ func _update_turret(delta):
 		target_pos = focus_fire_module.global_position
 	
 	var to_target = target_pos - turret_module.global_position
-	var target_angle = to_target.angle() - rotation
+	var target_angle = to_target.angle() + PI/2
 	
-	var current_turret_rotation = turret_module.rotation
+	var current_turret_rotation = turret_module.global_rotation
 	var angle_diff = angle_difference(current_turret_rotation, target_angle)
 	
 	if abs(angle_diff) > 0.01:
 		var rotation_dir = sign(angle_diff)
 		turret_module.rotation += rotation_dir * deg_to_rad(GameConstants.TURRET_ROTATION_SPEED) * delta
-		turret_module.rotation = clampf(turret_module.rotation, -PI, PI)
 	
 	if turret_cooldown <= 0 and to_target.length() <= GameConstants.TURRET_RANGE:
-		if abs(angle_diff) < deg_to_rad(5.0):
+		if abs(angle_diff) < deg_to_rad(15.0):
 			_fire_turret()
 
 func _fire_turret():
