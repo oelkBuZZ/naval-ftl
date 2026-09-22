@@ -1,0 +1,46 @@
+{
+  "collections": {
+    "Hull": {
+      "mesh_objects": 10,
+      "tris": 10084
+    },
+    "Superstructure": {
+      "mesh_objects": 15,
+      "tris": 2196
+    },
+    "Armament": {
+      "mesh_objects": 21,
+      "tris": 3600
+    },
+    "Details": {
+      "mesh_objects": 21,
+      "tris": 12112
+    },
+    "Environment": {
+      "mesh_objects": 2,
+      "tris": 28
+    }
+  },
+  "objects": 69,
+  "tris": 28020,
+  "bbox_m": {
+    "x": [
+      -58.573246002197266,
+      57.41200637817383
+    ],
+    "y": [
+      -6.734942436218262,
+      6.734942436218262
+    ],
+    "z": [
+      -4.3587164878845215,
+      21.791000366210938
+    ],
+    "length": 115.9852523803711,
+    "beam": 13.469884872436523,
+    "air_draft": 21.791000366210938
+  },
+  "hull_number": "560",
+  "loa_nominal_m": 114.76,
+  "beam_nominal_m": 12.09
+}
